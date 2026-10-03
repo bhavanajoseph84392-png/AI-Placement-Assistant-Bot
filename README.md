@@ -70,8 +70,8 @@ flowchart TD
     T --> S
 
 
-#DOCUMENT INGESTION
-       │
+                    #DOCUMENT INGESTION
+                           │
        ▼
 ┌──────────────────┐
 │   Upload PDFs    │
@@ -143,6 +143,7 @@ flowchart TD
 ┌──────────────────────┐
 │ Streamlit Chat UI    │
 └──────────────────────┘
+
 
 
 
