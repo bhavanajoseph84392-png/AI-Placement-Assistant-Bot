@@ -67,9 +67,300 @@ flowchart TD
     R --> S[Streamlit Chat Interface]
 
     M --> T[Retrieved Sources]
-
     T --> S
 
 
+#DOCUMENT INGESTION
+       │
+       ▼
+┌──────────────────┐
+│   Upload PDFs    │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│   PyPDFLoader    │
+│ Extract PDF text │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────────┐
+│ Text Chunking         │
+│ chunk_size = 500     │
+│ overlap = 100        │
+└──────────┬───────────┘
+         │
+         ▼
+┌──────────────────────┐
+│ HuggingFace          │
+│ Embedding Model      │
+│ all-MiniLM-L6-v2     │
+└──────────┬───────────┘
+         │
+         ▼
+┌──────────────────────┐
+│    FAISS Vector DB   │
+└──────────┬───────────┘
+         │
+         ▼
+┌──────────────────────┐
+│ Similarity Retriever │
+│ Top 4 chunks         │
+└──────────┬───────────┘
+         │
+         │
+   USER QUESTION
+         │
+         ▼
+┌──────────────────────┐
+│ Retrieve Relevant    │
+│ Document Chunks      │
+└──────────┬───────────┘
+         │
+         ▼
+┌──────────────────────┐
+│ Build Context        │
+│ + User Question      │
+└──────────┬───────────┘
+         │
+         ▼
+┌──────────────────────┐
+│ Hugging Face         │
+│ InferenceClient      │
+└──────────┬───────────┘
+         │
+         ▼
+┌──────────────────────┐
+│       LLM            │
+└──────────┬───────────┘
+         │
+         ▼
+┌──────────────────────┐
+│ Generated Answer     │
+└──────────┬───────────┘
+         │
+         ▼
+┌──────────────────────┐
+│ Streamlit Chat UI    │
+└──────────────────────┘
 
-                   
+
+
+#🧠 How the Application Works
+1. Upload Placement Documents
+
+The user uploads one or more PDF files through the Streamlit interface.
+
+The application accepts multiple PDF files dynamically.
+
+User
+  ↓
+Upload PDF files
+  ↓
+Streamlit
+
+The application checks whether PDF files are available before creating the knowledge base.
+
+2. Extract Text from PDFs
+
+The uploaded PDF files are temporarily stored and processed using:
+
+PyPDFLoader
+
+PyPDFLoader loads the PDF pages and extracts their text.
+
+Each page also keeps metadata such as the source filename and page number.
+
+PDF
+ ↓
+PyPDFLoader
+ ↓
+Pages + Text + Metadata
+3. Split the Documents into Chunks
+
+Large documents are divided into smaller chunks using:
+
+RecursiveCharacterTextSplitter
+
+The project uses:
+
+chunk_size = 500
+chunk_overlap = 100
+
+The overlap helps maintain some contextual continuity between neighboring chunks.
+
+Document
+     ↓
+Text
+     ↓
+Chunk 1
+Chunk 2
+Chunk 3
+...
+4. Generate Embeddings
+
+Each text chunk is converted into a numerical vector using:
+
+HuggingFaceEmbeddings
+
+The embedding model used is:
+
+sentence-transformers/all-MiniLM-L6-v2
+
+The embeddings are normalized before being used by the vector store.
+
+Conceptually:
+
+Text Chunk
+    ↓
+Embedding Model
+    ↓
+Numerical Vector
+
+These vectors allow the system to compare the semantic similarity between a user's question and document chunks.
+
+5. Store Embeddings in FAISS
+
+The generated embeddings are stored in:
+
+FAISS
+
+The application creates the vector store from the document chunks and embeddings.
+
+It then creates a similarity-based retriever with:
+
+k = 4
+
+This means the retriever attempts to return the 4 most relevant chunks for a user's question.
+
+Document Chunks
+      ↓
+Embeddings
+      ↓
+FAISS Vector Store
+      ↓
+Similarity Retriever
+6. User Asks a Question
+
+After the knowledge base is created, the user can enter a question in the Streamlit chat interface.
+
+Example:
+
+"What are the eligibility criteria for the placement drive?"
+
+The question is passed to the retrieval function.
+
+User Question
+      ↓
+Retriever
+7. Retrieve Relevant Information
+
+The retriever searches the FAISS vector store and returns the most relevant document chunks.
+
+The application retrieves up to 4 relevant chunks using similarity search.
+
+User Question
+      ↓
+Similarity Search
+      ↓
+Top 4 Relevant Chunks
+
+The application also keeps the source filename and page number for each retrieved chunk.
+
+8. Build the Context
+
+The retrieved chunks are combined into a context that is passed to the LLM.
+
+The generated context contains information such as:
+
+Source 1: placement.pdf, page 3
+
+[relevant document content]
+
+Source 2: placement.pdf, page 7
+
+[relevant document content]
+
+This allows the application to tell the model where the retrieved information came from.
+
+9. Generate the Answer
+
+The retrieved document context and the user's question are placed into a prompt.
+
+The application uses:
+
+Hugging Face InferenceClient
+
+to communicate with the hosted LLM.
+
+The model name can be configured through the environment variable:
+
+MODEL_NAME
+
+The default configured model is:
+
+openai/gpt-oss-120b
+
+The application uses a low temperature of:
+
+0.2
+
+and a maximum response length of:
+
+350 tokens
+
+The application also retries the LLM request up to three times if a temporary API error occurs.
+
+10. Grounded Answer Generation
+
+The system prompt instructs the model to:
+
+Answer only from the supplied document context
+Avoid outside knowledge
+Give concise and meaningful answers
+Respond in a beginner-friendly manner
+Say:
+I don't know based on the uploaded documents.
+
+when the answer is not available in the retrieved context.
+
+This helps keep the generated response grounded in the uploaded placement documents.
+
+11. Display the Answer
+
+The generated response is added to the chat history and displayed through the Streamlit chat interface.
+
+The application also displays the retrieved source filenames and page numbers.
+
+Retrieved Context
+       ↓
+      LLM
+       ↓
+Generated Answer
+       ↓
+Streamlit Chat
+       ↓
+Retrieved Sources
+
+
+# 📁 Project Structure
+AI-Placement-Assistant-Bot/
+│
+├── app.py
+├── requirements.txt
+├── .gitignore
+└── README.md
+
+
+#⚙️ Installation
+1. Clone the repository
+git clone https://github.com/bhavanajoseph84392-png/AI-Placement-Assistant-Bot.git
+cd AI-Placement-Assistant-Bot
+2. Create a virtual environment
+python -m venv venv
+
+Activate it on Windows:
+
+venv\Scripts\activate
+3. Install dependencies
+pip install -r requirements.txt
