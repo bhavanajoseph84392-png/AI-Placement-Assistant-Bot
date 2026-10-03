@@ -1,260 +1,213 @@
-# 📚 AI Placement Assistant Bot
+🎯 Problem Statement
 
-An AI-powered Placement Assistant built with **Python, Streamlit, LangChain, Hugging Face and FAISS**.
+Placement information is often distributed across multiple PDF documents such as:
 
-The application allows users to upload one or more placement-related PDF documents, build a searchable knowledge base from those documents, and ask questions through a chat interface.
+Placement notifications
+Job descriptions
+Eligibility criteria
+Company information
+Interview instructions
+Exam details
+Salary information
+Selection processes
 
-The assistant uses a **Retrieval-Augmented Generation (RAG)** pipeline to retrieve relevant information from the uploaded documents and generate answers using an LLM.
+Searching through these documents manually can be time-consuming.
 
----
+💡 Solution
 
-## 🚀 Features
+The AI Placement Assistant Bot allows users to upload these documents and ask questions in natural language.
 
-- 📄 Upload one or multiple PDF files
-- 🧠 Build a knowledge base from uploaded documents
-- ✂️ Split PDF content into smaller text chunks
-- 🔢 Generate vector embeddings for document chunks
-- 🔎 Perform similarity-based document retrieval
-- 🗂️ Store document vectors using FAISS
-- 🤖 Generate answers using a Hugging Face hosted LLM
-- 💬 Interactive Streamlit chat interface
-- 📑 Display retrieved source documents and page numbers
-- 🔐 Use environment variables for API credentials
-- 🧹 Clear uploaded documents and chat session
+Instead of manually searching through PDFs, the application:
 
----
+Upload PDF → Process Document → Retrieve Relevant Information → Generate Answer
 
-# 🏗️ System Architecture
+🚀 Features
+Feature	Description
+📄 PDF Upload	Upload one or multiple placement PDFs
+✂️ Text Chunking	Split documents into smaller chunks
+🔢 Embeddings	Convert text chunks into numerical vectors
+🗂️ FAISS	Store and search document embeddings
+🔎 Similarity Search	Retrieve relevant document chunks
+🤖 LLM	Generate answers using Hugging Face
+💬 Chat Interface	Interactive Streamlit interface
+📑 Sources	Display source documents and page numbers
+🔐 Environment Variables	Secure API credential management
+🔄 Retry Handling	Retry temporary LLM API failures
+🏗️ System Architecture
+🔄 Overall Architecture
+🧠 RAG Workflow
 
-```mermaid
-flowchart TD
+The application has two major phases.
 
-    A[User] --> B[Streamlit Web Interface]
+Phase 1 — Document Ingestion
+┌─────────────────────────┐
+│     Upload PDF Files    │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│      PyPDFLoader        │
+│     Extract PDF Text    │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│      Text Chunking      │
+│   chunk_size = 500      │
+│   overlap = 100         │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│ HuggingFace Embeddings  │
+│  all-MiniLM-L6-v2       │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│    FAISS Vector Store   │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│   Similarity Retriever  │
+│        Top 4            │
+└─────────────────────────┘
+Phase 2 — Question Answering
+┌─────────────────────────┐
+│      User Question      │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│    Similarity Search    │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│   Top 4 Relevant Chunks │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│   Build Document        │
+│       Context           │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│    Prompt Construction  │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│ Hugging Face            │
+│ InferenceClient         │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│          LLM            │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│     Generated Answer    │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│   Streamlit Chat UI     │
+│   + Retrieved Sources   │
+└─────────────────────────┘
+🧩 How the Application Works
+1️⃣ Upload Placement Documents
 
-    B --> C{Upload PDF Files}
-
-    C --> D[PyPDFLoader]
-
-    D --> E[Extract Text from PDFs]
-
-    E --> F[Recursive Character Text Splitter]
-
-    F --> G[Text Chunks]
-
-    G --> H[HuggingFace Embeddings]
-
-    H --> I[all-MiniLM-L6-v2]
-
-    I --> J[FAISS Vector Store]
-
-    J --> K[Similarity Retriever]
-    
-    B --> L[User Question]
-
-    L --> K
-
-    K --> M[Retrieve Top 4 Relevant Chunks]
-
-    M --> N[Build Document Context]
-
-    N --> O[Prompt Construction]
-
-    O --> P[Hugging Face InferenceClient]
-
-    P --> Q[LLM]
-
-    Q --> R[Generated Answer]
-
-    R --> S[Streamlit Chat Interface]
-
-    M --> T[Retrieved Sources]
-
-    T --> S
-                     DOCUMENT INGESTION
-                        │
-                        ▼
-              ┌──────────────────┐
-              │   Upload PDFs    │
-              └────────┬─────────┘
-                       │
-                       ▼
-              ┌──────────────────┐
-              │   PyPDFLoader    │
-              │ Extract PDF text │
-              └────────┬─────────┘
-                       │
-                       ▼
-              ┌──────────────────────┐
-              │ Text Chunking        │
-              │ chunk_size = 500     │
-              │ overlap = 100        │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ HuggingFace         │
-              │ Embedding Model     │
-              │ all-MiniLM-L6-v2    │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │    FAISS Vector DB   │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ Similarity Retriever │
-              │ Top 4 chunks         │
-              └──────────┬───────────┘
-                         │
-                         │
-              USER QUESTION
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ Retrieve Relevant    │
-              │ Document Chunks      │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ Build Context        │
-              │ + User Question      │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ Hugging Face         │
-              │ InferenceClient      │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │       LLM            │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ Generated Answer     │
-              └──────────┬───────────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │ Streamlit Chat UI    │
-              └──────────────────────┘
-              🧠 How the Application Works
-1. Upload Placement Documents
-
-The user uploads one or more PDF files through the Streamlit interface.
-
-The application accepts multiple PDF files dynamically.
+The user uploads one or more placement-related PDF documents through the Streamlit interface.
 
 User
-  ↓
-Upload PDF files
-  ↓
+ ↓
+Upload PDF Files
+ ↓
 Streamlit
+2️⃣ Extract Text from PDFs
 
-The application checks whether PDF files are available before creating the knowledge base.
-
-2. Extract Text from PDFs
-
-The uploaded PDF files are temporarily stored and processed using:
+The uploaded PDFs are processed using:
 
 PyPDFLoader
 
-PyPDFLoader loads the PDF pages and extracts their text.
+It loads the PDF pages and extracts their text.
 
-Each page also keeps metadata such as the source filename and page number.
+The application also maintains metadata such as:
 
+Source filename
+Page number
+Flow
 PDF
  ↓
 PyPDFLoader
  ↓
 Pages + Text + Metadata
-3. Split the Documents into Chunks
+3️⃣ Split Documents into Chunks
 
-Large documents are divided into smaller chunks using:
+Large documents are divided into smaller pieces using:
 
 RecursiveCharacterTextSplitter
-
-The project uses:
-
-chunk_size = 500
+Configuration
+chunk_size   = 500
 chunk_overlap = 100
 
-The overlap helps maintain some contextual continuity between neighboring chunks.
+The overlap helps maintain contextual continuity between neighboring chunks.
 
 Document
-     ↓
-Text
-     ↓
-Chunk 1
-Chunk 2
-Chunk 3
-...
-4. Generate Embeddings
+    ↓
+Extracted Text
+    ↓
+┌────────────┐
+│  Chunk 1   │
+└────────────┘
+
+┌────────────┐
+│  Chunk 2   │
+└────────────┘
+
+┌────────────┐
+│  Chunk 3   │
+└────────────┘
+4️⃣ Generate Embeddings
 
 Each text chunk is converted into a numerical vector using:
 
 HuggingFaceEmbeddings
-
-The embedding model used is:
-
+Embedding Model
 sentence-transformers/all-MiniLM-L6-v2
-
-The embeddings are normalized before being used by the vector store.
-
-Conceptually:
-
+Flow
 Text Chunk
     ↓
 Embedding Model
     ↓
 Numerical Vector
 
-These vectors allow the system to compare the semantic similarity between a user's question and document chunks.
+These vectors allow the application to compare the semantic similarity between the user's question and document chunks.
 
-5. Store Embeddings in FAISS
+5️⃣ Store Embeddings in FAISS
 
 The generated embeddings are stored in:
 
-FAISS
+FAISS Vector Store
 
-The application creates the vector store from the document chunks and embeddings.
-
-It then creates a similarity-based retriever with:
+The application creates a similarity-based retriever using:
 
 k = 4
 
-This means the retriever attempts to return the 4 most relevant chunks for a user's question.
+Therefore, the retriever attempts to return the top 4 relevant chunks.
 
 Document Chunks
       ↓
 Embeddings
       ↓
-FAISS Vector Store
+FAISS
       ↓
 Similarity Retriever
-6. User Asks a Question
+6️⃣ User Asks a Question
 
-After the knowledge base is created, the user can enter a question in the Streamlit chat interface.
+After creating the knowledge base, the user can ask a question.
 
-Example:
-
-"What are the eligibility criteria for the placement drive?"
-
-The question is passed to the retrieval function.
-
+Example
+What are the eligibility criteria for this placement drive?
 User Question
       ↓
 Retriever
-7. Retrieve Relevant Information
+7️⃣ Retrieve Relevant Information
 
-The retriever searches the FAISS vector store and returns the most relevant document chunks.
-
-The application retrieves up to 4 relevant chunks using similarity search.
+The retriever performs similarity search against the FAISS vector store.
 
 User Question
       ↓
@@ -262,27 +215,36 @@ Similarity Search
       ↓
 Top 4 Relevant Chunks
 
-The application also keeps the source filename and page number for each retrieved chunk.
+The application also maintains source information for the retrieved chunks.
 
-8. Build the Context
+Source Filename
+       +
+Page Number
+8️⃣ Build the Context
 
-The retrieved chunks are combined into a context that is passed to the LLM.
+The retrieved chunks are combined into a document context.
 
-The generated context contains information such as:
+Example:
 
-Source 1: placement.pdf, page 3
+Source: placement.pdf
+Page: 3
 
-[relevant document content]
+[Relevant document content]
 
-Source 2: placement.pdf, page 7
 
-[relevant document content]
+Source: placement.pdf
+Page: 7
 
-This allows the application to tell the model where the retrieved information came from.
+[Relevant document content]
 
-9. Generate the Answer
+Then:
 
-The retrieved document context and the user's question are placed into a prompt.
+Retrieved Chunks
+       +
+User Question
+       ↓
+Document Context
+9️⃣ Generate the Answer
 
 The application uses:
 
@@ -290,44 +252,43 @@ Hugging Face InferenceClient
 
 to communicate with the hosted LLM.
 
-The model name can be configured through the environment variable:
+Default Model
+openai/gpt-oss-120b
+Configuration
+Temperature        : 0.2
+Maximum response  : 350 tokens
+Retry attempts     : 3
+
+The model name can be configured using:
 
 MODEL_NAME
+🔟 Grounded Answer Generation
 
-The default configured model is:
-
-openai/gpt-oss-120b
-
-The application uses a low temperature of:
-
-0.2
-
-and a maximum response length of:
-
-350 tokens
-
-The application also retries the LLM request up to three times if a temporary API error occurs.
-
-10. Grounded Answer Generation
-
-The system prompt instructs the model to:
+The system prompt instructs the LLM to:
 
 Answer only from the supplied document context
 Avoid outside knowledge
-Give concise and meaningful answers
+Give concise answers
 Respond in a beginner-friendly manner
-Say:
+
+If the required information is not available in the retrieved context, the assistant is instructed to respond:
+
 I don't know based on the uploaded documents.
+Grounding Flow
+Retrieved Context
+       ↓
+System Instructions
+       ↓
+User Question
+       ↓
+LLM
+       ↓
+Grounded Answer
+1️⃣1️⃣ Display Answer and Sources
 
-when the answer is not available in the retrieved context.
+The generated answer is displayed in the Streamlit chat interface.
 
-This helps keep the generated response grounded in the uploaded placement documents.
-
-11. Display the Answer
-
-The generated response is added to the chat history and displayed through the Streamlit chat interface.
-
-The application also displays the retrieved source filenames and page numbers.
+The application also displays retrieved source information.
 
 Retrieved Context
        ↓
@@ -338,121 +299,151 @@ Generated Answer
 Streamlit Chat
        ↓
 Retrieved Sources
-🧩 Complete End-to-End Flow
-User
- │
- │ Uploads placement PDFs
- ▼
-Streamlit Interface
- │
- ▼
-PyPDFLoader
- │
- │ Extract PDF pages
- ▼
-Document Text
- │
- ▼
-RecursiveCharacterTextSplitter
- │
- │ chunk_size = 500
- │ overlap = 100
- ▼
-Text Chunks
- │
- ▼
-HuggingFace Embeddings
- │
- │ all-MiniLM-L6-v2
- ▼
-Vector Embeddings
- │
- ▼
-FAISS Vector Store
- │
- ▼
-Similarity Retriever
- │
- │
- │ User asks question
- │
- ▼
-Question Embedding / Similarity Search
- │
- ▼
-Top 4 Relevant Chunks
- │
- ▼
-Context Construction
- │
- ▼
-Prompt
- │
- ▼
-Hugging Face InferenceClient
- │
- ▼
-LLM
- │
- ▼
-Generated Answer
- │
- ├──────────────► Chat Response
- │
- └──────────────► Retrieved Sources
+🔄 Complete End-to-End Flow
+┌───────────────────────┐
+│         USER          │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│    Upload PDF Files   │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│     PyPDFLoader       │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│    Extract Text       │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│      Chunking         │
+│   500 / 100 overlap   │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│ HuggingFace Embedding │
+│   all-MiniLM-L6-v2    │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│    FAISS Vector DB    │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│ Similarity Retriever  │
+│       Top 4           │
+└───────────┬───────────┘
+            │
+            │
+            │     ┌──────────────────┐
+            └────►│  User Question   │
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │ Relevant Chunks  │
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │ Context Building │
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │ Prompt Creation  │
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │ Hugging Face     │
+                  │ InferenceClient  │
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │       LLM        │
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │ Generated Answer │
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │ Streamlit Chat   │
+                  │  + Sources       │
+                  └──────────────────┘
 🛠️ Technology Stack
 Technology	Purpose
-Python	Application development
-Streamlit	Web interface
-LangChain	Document processing and retrieval components
-PyPDFLoader	PDF text extraction
-RecursiveCharacterTextSplitter	Document chunking
-HuggingFace Embeddings	Text embeddings
-all-MiniLM-L6-v2	Embedding model
-FAISS	Vector storage and similarity search
-Hugging Face InferenceClient	LLM API communication
-python-dotenv	Environment variable management
-
-The project's requirements.txt includes Streamlit, LangChain, LangChain Community, LangChain HuggingFace, sentence-transformers, Hugging Face Hub, FAISS CPU, PyPDF and python-dotenv dependencies.
-
+🐍 Python	Application development
+🎈 Streamlit	Web interface and chat UI
+🔗 LangChain	Document processing and retrieval components
+📄 PyPDFLoader	PDF text extraction
+✂️ RecursiveCharacterTextSplitter	Text chunking
+🧠 HuggingFaceEmbeddings	Generate text embeddings
+🔢 all-MiniLM-L6-v2	Embedding model
+🗂️ FAISS	Vector storage and similarity search
+🤖 Hugging Face InferenceClient	LLM API communication
+🔐 python-dotenv	Environment variable management
 📁 Project Structure
 AI-Placement-Assistant-Bot/
 │
-├── app.py
-├── requirements.txt
-├── .gitignore
-└── README.md
-app.py
+├── 📄 app.py
+├── 📦 requirements.txt
+├── 🔒 .gitignore
+└── 📖 README.md
+📄 app.py
 
-Main application containing:
+The main application contains:
 
-Streamlit interface
-Environment configuration
-Hugging Face client
-Embedding model
-PDF processing
-Text chunking
-FAISS vector store
+Streamlit Interface
+Environment Configuration
+Hugging Face Client
+Embedding Model
+PDF Processing
+Text Chunking
+FAISS Vector Store
 Retriever
-RAG pipeline
-LLM response generation
-Chat history
-Source display
-requirements.txt
+RAG Pipeline
+LLM Response Generation
+Chat History
+Source Display
+📦 requirements.txt
 
-Contains the Python dependencies required to run the application.
+Contains all Python dependencies required to run the project.
 
+Main dependencies include:
+
+streamlit
+langchain
+langchain-community
+langchain-huggingface
+sentence-transformers
+huggingface-hub
+faiss-cpu
+pypdf
+python-dotenv
 ⚙️ Installation
-1. Clone the repository
+1. Clone the Repository
 git clone https://github.com/bhavanajoseph84392-png/AI-Placement-Assistant-Bot.git
+2. Open the Project
 cd AI-Placement-Assistant-Bot
-2. Create a virtual environment
+3. Create Virtual Environment
 python -m venv venv
-
-Activate it on Windows:
-
+4. Activate Virtual Environment
+Windows
 venv\Scripts\activate
-3. Install dependencies
+5. Install Dependencies
 pip install -r requirements.txt
 🔑 Environment Configuration
 
@@ -463,11 +454,15 @@ MODEL_NAME=openai/gpt-oss-120b
 
 The application reads the Hugging Face token from the environment or Streamlit secrets.
 
+⚠️ Important
+
 Never commit your actual API token to GitHub.
+
+Keep your .env file inside .gitignore.
 
 ▶️ Run the Application
 
-Start the Streamlit application using:
+Run:
 
 streamlit run app.py
 
